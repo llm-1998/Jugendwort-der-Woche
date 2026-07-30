@@ -86,6 +86,7 @@ async function main() {
   for (const [code, g] of Object.entries(groups)) {
     const draws = Object.values(g.draws || {});
     if (draws.some(d => d.periodId === pid)) { skipped++; continue; }
+    if (g.createdAt && g.createdAt > cutoffEpoch(pid)) { skipped++; continue; }
 
     const words = Object.values(g.words || {});
     const active = words.filter(w => !w.drawn).sort((a, b) => a.id.localeCompare(b.id));
