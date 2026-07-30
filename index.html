@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Jugendwort der Woche</title>
+<meta name="theme-color" content="#f4ea3c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Jugendwort">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.3/confetti.browser.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --ink:#191b1f;
+    --ink-soft:#5b6068;
+    --ink-faint:#9aa0a8;
+    --paper:#ffffff;
+    --field:#f4f5f2;
+    --line:#e6e7e3;
+    --marker:#f4ea3c;
+    --marker-soft:#faf6c8;
+    --danger:#c9463d;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--field);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    line-height:1.45;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:calc(28px + env(safe-area-inset-top)) 20px 80px}
+  header.app{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:26px}
+  .brand{font-size:15px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;user-select:none}
+  .brand em{font-style:normal;background:linear-gradient(transparent 55%, var(--marker) 55%, var(--marker) 92%, transparent 92%)}
+  .who{font-size:13px;color:var(--ink-soft);cursor:pointer}
+  .who:hover{color:var(--ink)}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+  h1{font-size:22px;font-weight:800;letter-spacing:-.01em;margin-bottom:6px}
+  h2{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px}
+  p.sub{font-size:14px;color:var(--ink-soft);margin-bottom:18px}
+
+  input[type=text]{
+    width:100%;font:inherit;font-size:15px;padding:12px 14px;
+    border:1.5px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink);
+    transition:border-color .15s;
+  }
+  input[type=text]:focus{outline:none;border-color:var(--ink)}
+  input[type=text]::placeholder{color:var(--ink-faint)}
+
+  button{font:inherit;cursor:pointer;border:none;border-radius:10px;transition:transform .06s, background .15s}
+  button:active{transform:scale(.98)}
+  button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+  .btn{background:var(--ink);color:#fff;font-size:15px;font-weight:600;padding:12px 18px;width:100%}
+  .btn:hover{background:#000}
+  .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--ink)}
+  .btn.small{width:auto;font-size:13px;padding:8px 13px}
+  .row{display:flex;gap:10px}
+  .row > *{flex:1}
+
+  .glist{display:flex;flex-direction:column;gap:10px}
+  .gitem{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:15px 16px;background:var(--paper);border:1px solid var(--line);
+    border-radius:var(--radius);cursor:pointer;transition:border-color .15s;
+  }
+  .gitem:hover{border-color:var(--ink)}
+  .gitem .gname{font-weight:700;font-size:15px}
+  .gitem .gcode{font-size:12px;color:var(--ink-faint);letter-spacing:.12em;font-variant-numeric:tabular-nums}
+  .gitem .arrow{color:var(--ink-faint);font-size:18px}
+
+  .hero{
+    background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+    padding:34px 22px 26px;text-align:center;margin-bottom:16px;overflow:hidden;
+  }
+  .hero .eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:16px}
+  .hero .word{
+    display:inline-block;
+    font-size:clamp(34px,9vw,52px);font-weight:850;letter-spacing:-.02em;line-height:1.1;
+    position:relative;padding:0 .18em;transform:rotate(-1.2deg);
+    word-break:break-word;cursor:pointer;
+  }
+  .hero .word::before{
+    content:"";position:absolute;inset:12% -2% 6% -2%;
+    background:var(--marker);z-index:-1;transform:skew(-6deg) rotate(.6deg);
+    border-radius:4px;
+  }
+  .hero .word.reveal{animation:pop .55s cubic-bezier(.2,1.4,.4,1) both}
+  @keyframes pop{
+    0%{opacity:0;transform:rotate(-1.2deg) scale(.4)}
+    100%{opacity:1;transform:rotate(-1.2deg) scale(1)}
+  }
+  .hero .meta{font-size:13px;color:var(--ink-soft);margin-top:16px}
+  .hero .empty-word{font-size:17px;color:var(--ink-soft);padding:6px 0 2px}
+  .hero .count{font-size:13px;color:var(--ink-faint);margin-top:14px;font-variant-numeric:tabular-nums}
+
+  .wlist{display:flex;flex-direction:column}
+  .witem{
+    display:flex;align-items:center;gap:12px;padding:13px 2px;
+    border-bottom:1px solid var(--line);
+  }
+  .witem:last-child{border-bottom:none}
+  .witem .wtext{flex:1;min-width:0}
+  .witem .wtext .w{font-weight:650;font-size:15px;word-break:break-word}
+  .witem .wtext .by{font-size:12px;color:var(--ink-faint);margin-top:1px}
+  .witem.drawn .w{text-decoration:line-through;text-decoration-thickness:2px;color:var(--ink-faint)}
+  .tag{
+    font-size:11px;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:999px;
+    background:var(--marker-soft);white-space:nowrap;
+  }
+  .tag.role{background:var(--ink);color:#fff}
+  .tag.superu{background:var(--marker)}
+  .icon-btn{
+    background:transparent;color:var(--ink-faint);font-size:14px;padding:6px 8px;border-radius:8px;
+  }
+  .icon-btn:hover{background:var(--field);color:var(--ink)}
+  .icon-btn.del:hover{color:var(--danger)}
+
+  .mitem{display:flex;align-items:center;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line)}
+  .mitem:last-child{border-bottom:none}
+  .mitem .mname{flex:1;font-weight:600;font-size:14.5px}
+  .mitem .mname span{color:var(--ink-faint);font-weight:400}
+
+  .share-code{
+    font-size:30px;font-weight:800;letter-spacing:.28em;text-align:center;
+    padding:14px 0 14px .28em;background:var(--field);border-radius:10px;margin-bottom:12px;
+    font-variant-numeric:tabular-nums;user-select:all;
+  }
+  #qr{display:flex;justify-content:center;padding:8px 0 4px}
+  #qr img, #qr canvas{border-radius:8px}
+
+  .note{font-size:12.5px;color:var(--ink-faint);margin-top:10px;line-height:1.5}
+  .backlink{display:inline-block;font-size:13.5px;color:var(--ink-soft);cursor:pointer;margin-bottom:16px;background:none;padding:0}
+  .backlink:hover{color:var(--ink)}
+  .msg{font-size:13.5px;color:var(--danger);margin-top:8px;min-height:1em}
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%);
+    background:var(--ink);color:#fff;font-size:13.5px;font-weight:600;
+    padding:10px 18px;border-radius:999px;opacity:0;pointer-events:none;
+    transition:opacity .25s;z-index:50;white-space:nowrap;
+  }
+  .toast.show{opacity:1}
+
+  .overlay{
+    position:fixed;inset:0;background:rgba(20,22,25,.45);display:none;
+    align-items:center;justify-content:center;padding:20px;z-index:40;
+  }
+  .overlay.show{display:flex}
+  .modal{background:var(--paper);border-radius:var(--radius);padding:22px;width:100%;max-width:420px}
+  .modal h3{font-size:17px;font-weight:800;margin-bottom:14px}
+  .modal .row{margin-top:14px}
+
+  .hidden{display:none !important}
+  .spin{
+    width:22px;height:22px;border:2.5px solid var(--line);border-top-color:var(--ink);
+    border-radius:50%;margin:40px auto;animation:sp .8s linear infinite;
+  }
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .setup-warn{
+    background:#fff6f5;border:1px solid #f0cfcc;border-radius:var(--radius);
+    padding:18px;font-size:14px;line-height:1.6;color:#7a2e28;
+  }
+  .setup-warn code{background:#fff;padding:1px 5px;border-radius:5px;font-size:13px}
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important;transition:none !important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <div class="brand" onclick="goHome()">Jugendwort <em>der Woche</em></div>
+    <div class="who" id="whoami" onclick="editName()"></div>
+  </header>
+
+  <div id="loading"><div class="spin"></div></div>
+
+  <!-- SETUP-HINWEIS falls Firebase-Konfiguration fehlt -->
+  <section id="view-setup" class="hidden">
+    <div class="setup-warn">
+      <strong>Firebase ist noch nicht konfiguriert.</strong><br>
+      Öffne <code>index.html</code> und ersetze den Block <code>firebaseConfig</code> ganz oben im
+      <code>&lt;script&gt;</code>-Teil durch die Konfiguration deines Firebase-Projekts.
+      Die Schritt-für-Schritt-Anleitung steht in der <code>ANLEITUNG.md</code>.
+    </div>
+  </section>
+
+  <!-- ONBOARDING -->
+  <section id="view-onboard" class="hidden">
+    <div class="card">
+      <h1>Na, safe am Start?</h1>
+      <p class="sub">Sag kurz, wer du bist – dein Name steht später neben deinen eingereichten Wörtern.</p>
+      <input type="text" id="ob-name" placeholder="Dein Name" maxlength="30">
+      <div class="msg" id="ob-msg"></div>
+      <button class="btn" style="margin-top:6px" onclick="saveName()">Los geht's</button>
+    </div>
+  </section>
+
+  <!-- HOME -->
+  <section id="view-home" class="hidden">
+    <div class="card">
+      <h2>Deine Gruppen</h2>
+      <div class="glist" id="home-groups"></div>
+      <p class="sub" id="home-empty" style="margin:4px 0 0">Noch keine Gruppe – erstelle eine oder tritt mit einem Code bei.</p>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="showModal('modal-create')">Gruppe erstellen</button>
+      <button class="btn ghost" onclick="showModal('modal-join')">Beitreten</button>
+    </div>
+  </section>
+
+  <!-- GROUP -->
+  <section id="view-group" class="hidden">
+    <button class="backlink" onclick="goHome()">&larr; Alle Gruppen</button>
+
+    <div class="hero" id="hero"></div>
+
+    <div class="card">
+      <h2>Wort einreichen</h2>
+      <div class="row">
+        <input type="text" id="new-word" placeholder="z. B. Aura, Talahon, Digga …" maxlength="60" onkeydown="if(event.key==='Enter')submitWord()">
+        <button class="btn small" style="flex:0 0 auto" onclick="submitWord()">Einreichen</button>
+      </div>
+      <div class="msg" id="word-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2 id="wlist-title">Eingereichte Wörter</h2>
+      <div class="wlist" id="wlist"></div>
+      <p class="sub" id="wlist-empty" style="margin:2px 0 0">Noch nix drin. Sei kein Lauch, reich das erste Wort ein.</p>
+    </div>
+
+    <div class="card">
+      <h2>Bisherige Wörter der Woche</h2>
+      <div class="wlist" id="history"></div>
+      <p class="sub" id="history-empty" style="margin:2px 0 0">Die erste Auslosung steht noch aus.</p>
+    </div>
+
+    <div class="card">
+      <h2>Mitglieder &amp; Rollen</h2>
+      <div id="mlist"></div>
+      <p class="note" id="mlist-note"></p>
+    </div>
+
+    <div class="card">
+      <h2>Kolleg:innen einladen</h2>
+      <div class="share-code" id="share-code"></div>
+      <div id="qr"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn ghost" onclick="copyCode()">Code kopieren</button>
+        <button class="btn ghost" onclick="copyLink()">Link kopieren</button>
+      </div>
+      <p class="note">Zum Beitreten: Link öffnen oder QR-Code scannen – der Gruppencode wird automatisch übernommen. Tipp fürs Handy: Im Browser „Zum Home-Bildschirm hinzufügen“, dann liegt die App wie eine echte App auf dem Homescreen.</p>
+    </div>
+
+    <p class="note" style="text-align:center">
+      Die Auslosung startet jeden Montag um 10:00 Uhr automatisch – live auf allen geöffneten Geräten,
+      ansonsten per Zeitplan im Hintergrund. Das Ergebnis ist für alle identisch.
+    </p>
+  </section>
+</div>
+
+<!-- MODALS -->
+<div class="overlay" id="modal-create" onclick="if(event.target===this)hideModals()">
+  <div class="modal">
+    <h3>Neue Gruppe erstellen</h3>
+    <input type="text" id="create-name" placeholder="Name der Gruppe, z. B. Büro 3. OG" maxlength="40">
+    <div class="msg" id="create-msg"></div>
+    <div class="row">
+      <button class="btn ghost" onclick="hideModals()">Abbrechen</button>
+      <button class="btn" onclick="createGroup()">Erstellen</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-join" onclick="if(event.target===this)hideModals()">
+  <div class="modal">
+    <h3>Gruppe beitreten</h3>
+    <input type="text" id="join-code" placeholder="Code, z. B. K7M2XA" maxlength="6" style="text-transform:uppercase;letter-spacing:.2em;font-weight:700">
+    <div class="msg" id="join-msg"></div>
+    <div class="row">
+      <button class="btn ghost" onclick="hideModals()">Abbrechen</button>
+      <button class="btn" onclick="joinGroup()">Beitreten</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal-edit" onclick="if(event.target===this)hideModals()">
+  <div class="modal">
+    <h3>Wort bearbeiten</h3>
+    <input type="text" id="edit-word" maxlength="60">
+    <div class="msg" id="edit-msg"></div>
+    <div class="row">
+      <button class="btn ghost" onclick="hideModals()">Abbrechen</button>
+      <button class="btn" onclick="saveEdit()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================================
+   FIREBASE-KONFIGURATION – HIER DEINE WERTE EINTRAGEN
+   (Firebase Console → Projekteinstellungen → Meine Apps → Web-App → Config)
+   ========================================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyCrJwOwGbxVng7NA-lC2h4IvLSKV7_aSHk",
+  authDomain: "jugendwort-d9bd4.firebaseapp.com",
+  databaseURL: "https://jugendwort-d9bd4-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "jugendwort-d9bd4",
+  storageBucket: "jugendwort-d9bd4.firebasestorage.app",
+  messagingSenderId: "693873437438",
+  appId: "1:693873437438:web:d6ab3a3f56b10377de53af"
+  measurementId: "G-D5SMZMJT34"
+};
+/* ========================================================================= */
+
+/* ---------- state ---------- */
+let db = null;
+let me = null;                 // {userId, name, groups:[{code,name}], seen:{code:key}}
+let group = null;              // aktuell geöffnete Gruppe (live aus Firebase)
+let groupRef = null;           // aktiver Realtime-Listener
+let editingWordId = null;
+let drawWatch = null;          // Intervall: prüft, ob Mo 10:00 erreicht ist
+
+const $ = id => document.getElementById(id);
+const KEY_ME = 'jw_me';
+const gPath = code => 'groups/' + code;
+
+/* ---------- lokale Daten (nur dieses Gerät) ---------- */
+function loadMe(){
+  try{ const v = localStorage.getItem(KEY_ME); return v ? JSON.parse(v) : null; }catch(e){ return null; }
+}
+function saveMe(){
+  try{ localStorage.setItem(KEY_ME, JSON.stringify(me)); }catch(e){}
+}
+
+/* ---------- Objekt<->Array-Helfer (Firebase speichert Objekte) ---------- */
+const wordsArr  = g => Object.values(g && g.words  || {});
+const drawsArr  = g => Object.values(g && g.draws  || {});
+const membersArr= g => Object.entries(g && g.members|| {}).map(([uid,m])=>({userId:uid, ...m}));
+
+/* ---------- deterministische Auslosung ---------- */
+function xmur3(str){
+  let h = 1779033703 ^ str.length;
+  for(let i=0;i<str.length;i++){
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h<<13)|(h>>>19);
+  }
+  return ()=>{ h = Math.imul(h ^ (h>>>16), 2246822507); h = Math.imul(h ^ (h>>>13), 3266489909); return (h ^= h>>>16)>>>0; };
+}
+function mulberry32(a){
+  return ()=>{ a|=0; a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; };
+}
+
+/* Letzter fälliger Stichtag: Montag 10:00 Uhr (lokale Zeit) */
+function lastDrawDue(now){
+  const d = new Date(now);
+  const day = (d.getDay()+6)%7;
+  d.setHours(10,0,0,0);
+  d.setDate(d.getDate()-day);
+  if(d > now) d.setDate(d.getDate()-7);
+  return d;
+}
+function nextDrawDate(now){
+  const d = lastDrawDue(now); d.setDate(d.getDate()+7); return d;
+}
+function periodId(date){
+  const y=date.getFullYear(), m=String(date.getMonth()+1).padStart(2,'0'), dd=String(date.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd}`;
+}
+
+/* Fällige Auslosung ausführen und in Firebase schreiben (deterministisch,
+   daher kollisionsfrei, wenn mehrere Geräte gleichzeitig auslösen). */
+async function runDueDraw(g){
+  const pid = periodId(lastDrawDue(new Date()));
+  if(drawsArr(g).some(x=>x.periodId===pid)) return false;
+  const active = wordsArr(g).filter(w=>!w.drawn).sort((a,b)=>a.id.localeCompare(b.id));
+  if(active.length===0) return false;
+  const rnd = mulberry32(xmur3(g.code + '|' + pid)());
+  const pick = active[Math.floor(rnd()*active.length)];
+  const did = 'd_' + pid;
+  const upd = {};
+  upd[`words/${pick.id}/drawn`] = pid;
+  upd[`draws/${did}`] = {periodId: pid, wordId: pick.id, text: pick.text, by: pick.userName, at: Date.now()};
+  await db.ref(gPath(g.code)).update(upd);
+  return true;
+}
+
+/* ---------- init ---------- */
+window.addEventListener('load', init);
+function firebaseReady(){ return firebaseConfig.apiKey !== 'HIER_EINTRAGEN'; }
+function init(){
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+  $('loading').classList.add('hidden');
+  if(!firebaseReady()){ show('view-setup'); return; }
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  me = loadMe();
+  if(!me || !me.name){ show('view-onboard'); $('ob-name').focus(); return; }
+  renderWho();
+  goHome();
+  const hashCode = readJoinHash();
+  if(hashCode) prefillJoin(hashCode);
+}
+function readJoinHash(){
+  try{
+    const m = (location.hash||'').match(/join=([A-Z0-9]{6})/i);
+    return m ? m[1].toUpperCase() : null;
+  }catch(e){ return null; }
+}
+function prefillJoin(code){
+  $('join-code').value = code;
+  setTimeout(()=>{ showModal('modal-join'); }, 100);
+}
+
+/* ---------- onboarding / name ---------- */
+function saveName(){
+  const name = $('ob-name').value.trim();
+  if(!name){ $('ob-msg').textContent = 'Ohne Namen geht’s nicht.'; return; }
+  if(!me) me = { userId: 'u_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36), name:'', groups:[], seen:{} };
+  me.name = name;
+  saveMe();
+  renderWho();
+  goHome();
+  const hashCode = readJoinHash();
+  if(hashCode) prefillJoin(hashCode);
+}
+function editName(){
+  if(!me) return;
+  detachGroup();
+  show('view-onboard');
+  $('ob-name').value = me.name || '';
+  $('ob-name').focus();
+}
+function renderWho(){ $('whoami').textContent = me && me.name ? me.name : ''; }
+
+/* ---------- navigation ---------- */
+function show(id){
+  ['view-setup','view-onboard','view-home','view-group'].forEach(v=>$(v).classList.add('hidden'));
+  $(id).classList.remove('hidden');
+}
+function goHome(){
+  detachGroup();
+  renderHome();
+  show('view-home');
+}
+function detachGroup(){
+  if(groupRef){ groupRef.off(); groupRef = null; }
+  if(drawWatch){ clearInterval(drawWatch); drawWatch = null; }
+  group = null;
+}
+
+/* ---------- home ---------- */
+function renderHome(){
+  const list = $('home-groups');
+  list.innerHTML = '';
+  const gs = (me && me.groups) || [];
+  $('home-empty').style.display = gs.length ? 'none' : 'block';
+  gs.forEach(g=>{
+    const el = document.createElement('div');
+    el.className = 'gitem';
+    el.onclick = ()=>openGroup(g.code);
+    el.innerHTML = `<div><div class="gname"></div><div class="gcode">${g.code}</div></div><div class="arrow">&rarr;</div>`;
+    el.querySelector('.gname').textContent = g.name;
+    list.appendChild(el);
+  });
+}
+
+/* ---------- create / join ---------- */
+function genCode(){
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let c=''; for(let i=0;i<6;i++) c += chars[Math.floor(Math.random()*chars.length)];
+  return c;
+}
+async function createGroup(){
+  const name = $('create-name').value.trim();
+  if(!name){ $('create-msg').textContent='Gib der Gruppe einen Namen.'; return; }
+  $('create-msg').textContent='';
+  try{
+    let code, exists, tries=0;
+    do{
+      code = genCode();
+      exists = (await db.ref(gPath(code)).get()).exists();
+      tries++;
+    }while(exists && tries<5);
+    const g = {
+      code, name,
+      ownerId: me.userId, ownerName: me.name,
+      createdAt: Date.now(),
+      members: { [me.userId]: {name: me.name, super: true} }
+    };
+    await db.ref(gPath(code)).set(g);
+    me.groups.push({code, name});
+    saveMe();
+    hideModals();
+    $('create-name').value='';
+    openGroup(code);
+  }catch(e){
+    $('create-msg').textContent='Speichern fehlgeschlagen – Verbindung prüfen und nochmal versuchen.';
+  }
+}
+async function joinGroup(){
+  const code = $('join-code').value.trim().toUpperCase();
+  if(code.length!==6){ $('join-msg').textContent='Der Code hat 6 Zeichen.'; return; }
+  $('join-msg').textContent='';
+  try{
+    const snap = await db.ref(gPath(code)).get();
+    if(!snap.exists()){ $('join-msg').textContent='Keine Gruppe mit diesem Code gefunden.'; return; }
+    const g = snap.val();
+    if(!me.groups.some(x=>x.code===code)){
+      me.groups.push({code, name: g.name});
+      saveMe();
+    }
+    hideModals();
+    $('join-code').value='';
+    openGroup(code);
+  }catch(e){
+    $('join-msg').textContent='Verbindung fehlgeschlagen – nochmal versuchen.';
+  }
+}
+
+/* ---------- group view (Live-Sync) ---------- */
+function openGroup(code){
+  detachGroup();
+  show('view-group');
+  $('hero').innerHTML = '<div class="spin"></div>';
+  groupRef = db.ref(gPath(code));
+  groupRef.on('value', async snap => {
+    if(!snap.exists()){
+      toast('Gruppe nicht gefunden');
+      me.groups = me.groups.filter(x=>x.code!==code);
+      saveMe();
+      goHome(); return;
+    }
+    group = snap.val();
+    group.code = code;
+    await ensureMember(code);
+    renderGroup();
+  }, () => {
+    toast('Verbindung unterbrochen');
+  });
+  /* Live-Trigger: prüft alle 10 Sekunden, ob Montag 10:00 erreicht wurde */
+  drawWatch = setInterval(async ()=>{
+    if(group){ try{ await runDueDraw(group); }catch(e){} }
+  }, 10000);
+  /* Fallback direkt beim Öffnen: verpasste Auslosung nachholen */
+  setTimeout(async ()=>{ if(group){ try{ await runDueDraw(group); }catch(e){} } }, 1500);
+}
+/* Stellt sicher, dass ich in der Mitgliederliste stehe */
+async function ensureMember(code){
+  if(!group.members) group.members = {};
+  if(!group.members[me.userId]){
+    group.members[me.userId] = {name: me.name, super: false};
+    await db.ref(gPath(code) + '/members/' + me.userId).set({name: me.name, super: false});
+  }
+}
+
+function isAdmin(){ return group && me && group.ownerId === me.userId; }
+function isSuper(){
+  if(!group || !me) return false;
+  if(group.ownerId === me.userId) return true;
+  const m = group.members && group.members[me.userId];
+  return !!(m && m.super);
+}
+
+function renderGroup(){
+  if(!group) return;
+  /* hero */
+  const draws0 = drawsArr(group).sort((a,b)=>(b.at||0)-(a.at||0) || b.periodId.localeCompare(a.periodId));
+  const current = draws0[0];
+  const nowPid = periodId(lastDrawDue(new Date()));
+  const activeN = wordsArr(group).filter(w=>!w.drawn).length;
+  const hero = $('hero');
+  let heroHtml = `<div class="eyebrow">${esc(group.name)} &middot; Jugendwort der Woche</div>`;
+  const seenKey = current ? current.periodId + ':' + (current.at||0) : null;
+  const unseen = current && current.periodId === nowPid && getSeen(group.code) !== seenKey;
+  if(current && current.periodId === nowPid){
+    heroHtml += `<div class="word${unseen?' reveal':''}" onclick="celebrate()" title="Nochmal feiern">${esc(current.text)}</div>
+      <div class="meta">eingereicht von ${esc(current.by)} &middot; Woche ab ${fmtDate(current.periodId)}</div>`;
+  }else{
+    heroHtml += `<div class="empty-word">${activeN ? 'Diese Woche wurde noch nicht ausgelost.' : 'Noch keine Wörter im Lostopf.'}</div>`;
+  }
+  heroHtml += `<div class="count" id="countdown"></div>`;
+  if(isSuper() && activeN > 0){
+    heroHtml += `<div style="margin-top:16px"><button class="btn small ghost" onclick="manualDraw()">&#127922; Jetzt auslosen</button></div>`;
+  }
+  hero.innerHTML = heroHtml;
+  tickCountdown();
+  if(unseen){
+    setTimeout(celebrate, 350);
+    setSeen(group.code, seenKey);
+  }
+
+  /* word list */
+  const list = $('wlist'); list.innerHTML='';
+  const words = wordsArr(group).sort((a,b)=> (a.drawn?1:0)-(b.drawn?1:0) || b.createdAt-a.createdAt);
+  $('wlist-empty').style.display = words.length ? 'none':'block';
+  $('wlist-title').textContent = `Eingereichte Wörter (${activeN} im Lostopf)`;
+  words.forEach(w=>{
+    const el = document.createElement('div');
+    el.className = 'witem' + (w.drawn ? ' drawn':'');
+    const canEdit = isSuper() || w.userId === me.userId;
+    el.innerHTML = `
+      <div class="wtext">
+        <div class="w"></div>
+        <div class="by"></div>
+      </div>
+      ${w.drawn ? '<span class="tag">ausgelost</span>' : ''}
+      ${canEdit && !w.drawn ? '<button class="icon-btn" title="Bearbeiten">&#9998;</button>' : ''}
+      ${canEdit ? '<button class="icon-btn del" title="Löschen">&#10005;</button>' : ''}
+    `;
+    el.querySelector('.w').textContent = w.text;
+    el.querySelector('.by').textContent = 'von ' + w.userName + (w.drawn ? ' · Woche ab ' + fmtDate(w.drawn) : '');
+    el.querySelectorAll('.icon-btn').forEach(b=>{
+      if(b.classList.contains('del')) b.onclick = ()=>deleteWord(w.id);
+      else b.onclick = ()=>openEdit(w.id);
+    });
+    list.appendChild(el);
+  });
+
+  /* history */
+  const hist = $('history'); hist.innerHTML='';
+  $('history-empty').style.display = draws0.length ? 'none':'block';
+  draws0.forEach(d=>{
+    const el = document.createElement('div');
+    el.className='witem';
+    el.innerHTML = `<div class="wtext"><div class="w"></div><div class="by"></div></div>`;
+    el.querySelector('.w').textContent = d.text;
+    el.querySelector('.by').textContent = 'Woche ab ' + fmtDate(d.periodId) + ' · von ' + d.by;
+    hist.appendChild(el);
+  });
+
+  /* Mitglieder & Rollen */
+  const ml = $('mlist'); ml.innerHTML='';
+  membersArr(group).forEach(m=>{
+    const el = document.createElement('div');
+    el.className = 'mitem';
+    const isOwner = m.userId === group.ownerId;
+    const roleTag = isOwner ? '<span class="tag role">Admin</span>'
+                  : (m.super ? '<span class="tag superu">Super-User</span>' : '');
+    const canToggle = isAdmin() && !isOwner;
+    el.innerHTML = `
+      <div class="mname"></div>
+      ${roleTag}
+      ${canToggle ? `<button class="btn small ghost">${m.super ? 'Rechte entziehen' : 'Zum Super-User machen'}</button>` : ''}
+    `;
+    el.querySelector('.mname').innerHTML = esc(m.name) + (m.userId===me.userId ? ' <span>(du)</span>' : '');
+    if(canToggle) el.querySelector('button').onclick = ()=>toggleSuper(m.userId, !m.super);
+    ml.appendChild(el);
+  });
+  $('mlist-note').textContent = isAdmin()
+    ? 'Als Admin kannst du Super-User ernennen. Super-User dürfen alle Wörter bearbeiten und löschen.'
+    : (isSuper()
+      ? 'Du bist Super-User: Du darfst alle Wörter bearbeiten und löschen.'
+      : 'Super-User dürfen alle Wörter bearbeiten und löschen – ernannt werden sie vom Admin.');
+
+  /* share */
+  $('share-code').textContent = group.code;
+  renderQR();
+}
+
+let cdTimer=null;
+function tickCountdown(){
+  if(cdTimer) clearInterval(cdTimer);
+  const upd = ()=>{
+    const n = $('countdown'); if(!n){ clearInterval(cdTimer); return; }
+    const diff = nextDrawDate(new Date()) - new Date();
+    const d = Math.floor(diff/86400000), h = Math.floor(diff%86400000/3600000), m = Math.floor(diff%3600000/60000);
+    n.textContent = `Nächste Auslosung: Montag 10:00 Uhr · in ${d} T ${h} Std ${m} Min`;
+  };
+  upd();
+  cdTimer = setInterval(upd, 30000);
+}
+
+/* ---------- Auslosungen ---------- */
+async function manualDraw(){
+  if(!isSuper()){ toast('Nur Super-User dürfen auslosen'); return; }
+  const pid = periodId(lastDrawDue(new Date()));
+  const already = drawsArr(group).some(d=>d.periodId===pid);
+  if(already && !confirm('Diese Woche wurde schon ausgelost. Trotzdem ein weiteres Wort ziehen?')) return;
+  const active = wordsArr(group).filter(w=>!w.drawn);
+  if(active.length===0){ toast('Keine Wörter im Lostopf'); return; }
+  const pick = active[Math.floor(Math.random()*active.length)];
+  const at = Date.now();
+  const did = 'd_' + pid + '_' + at;
+  const upd = {};
+  upd[`words/${pick.id}/drawn`] = pid;
+  upd[`draws/${did}`] = {periodId: pid, wordId: pick.id, text: pick.text, by: pick.userName, at};
+  try{ await db.ref(gPath(group.code)).update(upd); }
+  catch(e){ toast('Auslosen fehlgeschlagen'); }
+}
+
+/* ---------- words ---------- */
+async function submitWord(){
+  const inp = $('new-word');
+  const text = inp.value.trim();
+  if(!text){ $('word-msg').textContent='Erst tippen, dann einreichen.'; return; }
+  if(wordsArr(group).some(w=>w.text.toLowerCase()===text.toLowerCase())){
+    $('word-msg').textContent='Das Wort ist schon drin – no cap.'; return;
+  }
+  $('word-msg').textContent='';
+  const id = 'w_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  const w = { id, text, userId: me.userId, userName: me.name, createdAt: Date.now(), drawn: null };
+  try{
+    await db.ref(gPath(group.code) + '/words/' + id).set(w);
+    inp.value='';
+    toast('Wort eingereicht');
+  }catch(e){
+    $('word-msg').textContent='Speichern fehlgeschlagen – nochmal versuchen.';
+  }
+}
+async function deleteWord(id){
+  const w = group.words && group.words[id];
+  if(!w) return;
+  if(!confirm(`„${w.text}“ wirklich löschen?`)) return;
+  try{
+    await db.ref(gPath(group.code) + '/words/' + id).remove();
+    toast('Gelöscht');
+  }catch(e){ toast('Löschen fehlgeschlagen'); }
+}
+function openEdit(id){
+  editingWordId = id;
+  const w = group.words && group.words[id];
+  if(!w) return;
+  $('edit-word').value = w.text;
+  $('edit-msg').textContent='';
+  showModal('modal-edit');
+}
+async function saveEdit(){
+  const text = $('edit-word').value.trim();
+  if(!text){ $('edit-msg').textContent='Das Wort darf nicht leer sein.'; return; }
+  try{
+    await db.ref(gPath(group.code) + '/words/' + editingWordId + '/text').set(text);
+    hideModals();
+    toast('Gespeichert');
+  }catch(e){ $('edit-msg').textContent='Speichern fehlgeschlagen.'; }
+}
+
+/* ---------- Rollen ---------- */
+async function toggleSuper(userId, makeSuper){
+  try{
+    await db.ref(gPath(group.code) + '/members/' + userId + '/super').set(makeSuper);
+    toast(makeSuper ? 'Zum Super-User ernannt' : 'Rechte entzogen');
+  }catch(e){ toast('Änderung fehlgeschlagen'); }
+}
+
+/* ---------- Konfetti & Seen-Tracking ---------- */
+function getSeen(code){ return (me.seen||{})[code] || null; }
+function setSeen(code, key){
+  if(!me.seen) me.seen = {};
+  me.seen[code] = key;
+  saveMe();
+}
+function celebrate(){
+  if(typeof confetti !== 'function') return;
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const colors = ['#f4ea3c','#191b1f','#ffffff','#f2b63c'];
+  confetti({particleCount:90, spread:75, origin:{y:.35}, colors, scalar:1.05});
+  setTimeout(()=>confetti({particleCount:50, angle:60, spread:60, origin:{x:0, y:.5}, colors}), 180);
+  setTimeout(()=>confetti({particleCount:50, angle:120, spread:60, origin:{x:1, y:.5}, colors}), 320);
+}
+
+/* ---------- share ---------- */
+function joinLink(){
+  try{ return location.href.split('#')[0] + '#join=' + group.code; }
+  catch(e){ return group.code; }
+}
+function renderQR(){
+  const box = $('qr'); box.innerHTML='';
+  try{
+    new QRCode(box, { text: joinLink(), width:150, height:150, colorDark:'#191b1f', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  }catch(e){
+    box.innerHTML = '<p class="note">QR-Code konnte nicht geladen werden – nutze den Code oben.</p>';
+  }
+}
+function copyCode(){ copyText(group.code, 'Code kopiert'); }
+function copyLink(){ copyText(joinLink(), 'Link kopiert'); }
+function copyText(t, msg){
+  navigator.clipboard.writeText(t).then(()=>toast(msg)).catch(()=>{
+    prompt('Zum Kopieren markieren:', t);
+  });
+}
+
+/* ---------- ui utils ---------- */
+function showModal(id){ $(id).classList.add('show'); const inp=$(id).querySelector('input'); if(inp) setTimeout(()=>inp.focus(),50); }
+function hideModals(){ document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('show')); }
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+function fmtDate(pid){
+  const [y,m,d] = pid.split('-');
+  return `${d}.${m}.${y}`;
+}
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+</script>
+</body>
+</html>
