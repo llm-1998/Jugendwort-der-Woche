@@ -58,8 +58,9 @@
   .hright{display:flex;align-items:center;gap:12px}
   .who{font-size:13px;color:var(--ink-soft);cursor:pointer}
   .who:hover{color:var(--ink)}
-  .gear{background:none;font-size:17px;color:var(--ink-soft);padding:4px 6px;border-radius:8px;line-height:1}
+  .gear{background:none;color:var(--ink-soft);padding:6px;border-radius:8px;display:flex;align-items:center;justify-content:center}
   .gear:hover{color:var(--ink);background:var(--paper)}
+  .gear svg{display:block}
 
   .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px}
   h1{font-size:22px;font-weight:800;letter-spacing:-.01em;margin-bottom:6px}
@@ -209,7 +210,7 @@
     <div class="brand" onclick="goHome()">Jugendwort <em>der Woche</em></div>
     <div class="hright">
       <div class="who" id="whoami" onclick="editName()"></div>
-      <button class="gear" onclick="showModal('modal-settings')" title="Einstellungen" id="gear-btn">&#9881;</button>
+      <button class="gear" onclick="showModal('modal-settings')" title="Einstellungen" id="gear-btn"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="4" y1="6.5" x2="11" y2="6.5"/><line x1="18" y1="6.5" x2="20" y2="6.5"/><circle cx="14.5" cy="6.5" r="2.4"/><line x1="4" y1="12" x2="5.5" y2="12"/><line x1="12" y1="12" x2="20" y2="12"/><circle cx="8.7" cy="12" r="2.4"/><line x1="4" y1="17.5" x2="12.5" y2="17.5"/><line x1="19.5" y1="17.5" x2="20" y2="17.5"/><circle cx="16" cy="17.5" r="2.4"/></svg></button>
     </div>
   </header>
 
