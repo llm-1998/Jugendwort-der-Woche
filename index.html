@@ -65,6 +65,8 @@
   .btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
   .btn.ghost:hover{border-color:var(--ink)}
   .btn.small{width:auto;font-size:13px;padding:8px 13px}
+  .btn.danger{background:transparent;color:var(--danger);border:1.5px solid var(--line)}
+  .btn.danger:hover{border-color:var(--danger)}
   .row{display:flex;gap:10px}
   .row > *{flex:1}
 
@@ -263,6 +265,12 @@
       <p class="note">Zum Beitreten: Link öffnen oder QR-Code scannen – der Gruppencode wird automatisch übernommen. Tipp fürs Handy: Im Browser „Zum Home-Bildschirm hinzufügen“, dann liegt die App wie eine echte App auf dem Homescreen.</p>
     </div>
 
+    <div class="card hidden" id="danger-card">
+      <h2>Gruppe löschen</h2>
+      <p class="sub" style="margin-bottom:12px">Löscht die Gruppe mit allen Wörtern, Auslosungen und Mitgliedern – für alle, endgültig.</p>
+      <button class="btn danger" onclick="deleteGroup()">Gruppe endgültig löschen</button>
+    </div>
+
     <p class="note" style="text-align:center">
       Die Auslosung startet jeden Montag um 10:00 Uhr automatisch – live auf allen geöffneten Geräten,
       ansonsten per Zeitplan im Hintergrund. Das Ergebnis ist für alle identisch.
@@ -311,7 +319,8 @@
 
 <script>
 /* =========================================================================
-   FIREBASE-KONFIGURATION 
+   FIREBASE-KONFIGURATION – HIER DEINE WERTE EINTRAGEN
+   (Firebase Console → Projekteinstellungen → Meine Apps → Web-App → Config)
    ========================================================================= */
 const firebaseConfig = {
   apiKey: "AIzaSyCrJwOwGbxVng7NA-lC2h4IvLSKV7_aSHk",
@@ -669,6 +678,7 @@ function renderGroup(){
   /* share */
   $('share-code').textContent = group.code;
   renderQR();
+  $('danger-card').classList.toggle('hidden', !isAdmin());
 }
 
 let cdTimer=null;
@@ -754,6 +764,26 @@ async function toggleSuper(userId, makeSuper){
     await db.ref(gPath(group.code) + '/members/' + userId + '/super').set(makeSuper);
     toast(makeSuper ? 'Zum Super-User ernannt' : 'Rechte entzogen');
   }catch(e){ toast('Änderung fehlgeschlagen'); }
+}
+
+/* Gruppe endgültig löschen – nur Admin, mit doppelter Bestätigung */
+async function deleteGroup(){
+  if(!isAdmin()){ toast('Nur der Admin kann die Gruppe löschen'); return; }
+  const code = group.code, name = group.name;
+  if(!confirm(`„${name}“ wirklich endgültig löschen? Alle Wörter und Auslosungen gehen für alle Mitglieder verloren.`)) return;
+  const typed = prompt(`Zur Bestätigung den Gruppencode eingeben (${code}):`);
+  if((typed||'').trim().toUpperCase() !== code){ toast('Code stimmt nicht – nichts gelöscht'); return; }
+  try{
+    detachGroup();
+    await db.ref(gPath(code)).remove();
+    me.groups = me.groups.filter(x=>x.code!==code);
+    saveMe();
+    goHome();
+    toast('Gruppe gelöscht');
+  }catch(e){
+    toast('Löschen fehlgeschlagen');
+    openGroup(code);
+  }
 }
 
 /* ---------- Konfetti & Seen-Tracking ---------- */
