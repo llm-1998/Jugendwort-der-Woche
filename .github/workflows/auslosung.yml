@@ -1,0 +1,27 @@
+name: Jugendwort-Auslosung (montags 10:00)
+
+on:
+  schedule:
+    # GitHub-Cron läuft in UTC. Beide Zeiten decken Sommer- UND Winterzeit ab:
+    # 08:00 UTC = 10:00 MESZ (Sommer) | 09:00 UTC = 10:00 MEZ (Winter)
+    # Das Skript prüft selbst, ob eine Auslosung fällig ist – der jeweils
+    # "falsche" Lauf macht einfach nichts. Doppelte Auslosungen sind
+    # dadurch ausgeschlossen.
+    - cron: '0 8 * * 1'
+    - cron: '0 9 * * 1'
+  # Erlaubt zusätzlich manuelles Auslösen über den Actions-Tab auf GitHub:
+  workflow_dispatch:
+
+jobs:
+  auslosen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Auslosung durchführen
+        env:
+          # Wird aus dem Repository-Secret gelesen (Settings -> Secrets -> Actions)
+          DB_URL: ${{ secrets.DB_URL }}
+        run: node scripts/draw.js
