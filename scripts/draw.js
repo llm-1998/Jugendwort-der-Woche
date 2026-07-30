@@ -43,6 +43,14 @@ function duePeriodId() {
   return `${y}-${m}-${d}`;
 }
 
+/* Stichtag (Montag 10:00 Berlin) als Zeitstempel, Sommer-/Winterzeit-sicher */
+function cutoffEpoch(pid) {
+  const probe = new Date(pid + 'T12:00:00Z');
+  const hh = +new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', hour: '2-digit', hour12: false }).format(probe);
+  const offset = hh - 12; // 1 = MEZ, 2 = MESZ
+  return Date.parse(pid + 'T10:00:00+0' + offset + ':00');
+}
+
 /* ---- identische Zufallslogik wie in der App ---- */
 function xmur3(str) {
   let h = 1779033703 ^ str.length;
