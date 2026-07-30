@@ -384,10 +384,7 @@ function periodId(date){
    daher kollisionsfrei, wenn mehrere Geräte gleichzeitig auslösen). */
 async function runDueDraw(g){
   const pid = periodId(lastDrawDue(new Date()));
-  async function runDueDraw(g){
-  const pid = periodId(lastDrawDue(new Date()));
   if(g.createdAt && g.createdAt > lastDrawDue(new Date()).getTime()) return false;
-  if(drawsArr(g).some(x=>x.periodId===pid)) return false;
   if(drawsArr(g).some(x=>x.periodId===pid)) return false;
   const active = wordsArr(g).filter(w=>!w.drawn).sort((a,b)=>a.id.localeCompare(b.id));
   if(active.length===0) return false;
